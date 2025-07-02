@@ -1,0 +1,140 @@
+import discord
+from discord.ext import commands
+import asyncio
+import os
+import sys
+import time
+from colorama import Fore, Style, init
+from dotenv import load_dotenv
+
+init(autoreset=True)
+load_dotenv()
+
+TOKEN = os.getenv("DISCORD_TOKEN")  # Load your token from .env file
+PREFIX = "."
+
+intents = discord.Intents.all()
+bot = commands.Bot(command_prefix=PREFIX, self_bot=True, intents=intents)
+
+active_tasks = []
+
+@bot.event
+async def on_ready():
+    print(Fore.GREEN + Style.BRIGHT + f"✅ Logged in as: {bot.user}")
+    print(Fore.YELLOW + "⚡ Selfbot is now active and listening...")
+
+# ─── BASIC COMMANDS ───
+
+@bot.command()
+async def spam(ctx, count: int, delay: float, *, message: str):
+    await ctx.message.delete()
+    for _ in range(count):
+        await ctx.send(message)
+        await asyncio.sleep(delay)
+
+@bot.command()
+async def editspam(ctx, count: int, delay: float, *, message: str):
+    await ctx.message.delete()
+    msg = await ctx.send(message)
+    for _ in range(count):
+        await msg.edit(content=message)
+        await asyncio.sleep(delay)
+
+@bot.command()
+async def typewrite(ctx, delay: float, *, message: str):
+    await ctx.message.delete()
+    typed = ""
+    for char in message:
+        typed += char
+        await ctx.send(typed)
+        await asyncio.sleep(delay)
+
+@bot.command()
+async def purge(ctx, limit: int):
+    await ctx.message.delete()
+    deleted = 0
+    async for msg in ctx.channel.history(limit=limit):
+        if msg.author == ctx.author:
+            try:
+                await msg.delete()
+                deleted += 1
+            except:
+                pass
+    await ctx.send(f"🧹 Deleted {deleted} messages.", delete_after=3)
+
+@bot.command()
+async def ping(ctx):
+    await ctx.message.delete()
+    start = time.time()
+    msg = await ctx.send("⏱️ Pinging...")
+    end = time.time()
+    latency = round((end - start) * 1000)
+    await msg.edit(content=f"🏓 Pong! Latency: `{latency}ms`")
+
+@bot.command()
+async def pingall(ctx, count: int):
+    await ctx.message.delete()
+    for _ in range(count):
+        await ctx.send("@everyone")
+
+@bot.command()
+async def stop(ctx):
+    await ctx.message.delete()
+    for task in active_tasks:
+        task.cancel()
+    active_tasks.clear()
+    await ctx.send("🛑 All tasks stopped.")
+
+@bot.command()
+async def restart(ctx):
+    await ctx.message.delete()
+    await ctx.send("🔄 Restarting selfbot...")
+    os.execv(sys.executable, ['python'] + sys.argv)
+
+@bot.command(name="helpme")
+async def helpme(ctx):
+    await ctx.message.delete()
+    help_text = """
+📜 **Public Selfbot Commands:**
+`.spam <count> <delay> <msg>` - Repeat a message
+`.editspam <count> <delay> <msg>` - Edit one message repeatedly
+`.typewrite <delay> <msg>` - Simulate typing
+`.purge <limit>` - Delete your own messages
+`.ping` - Measure latency
+`.pingall <count>` - Ping everyone multiple times
+`.stop` - Stop running tasks
+`.restart` - Restart this selfbot
+`.userinfo` - Show your user info
+`.avatar` - Show your avatar
+`.about` - Credits and info
+"""
+    await ctx.send(help_text)
+
+# ─── EXTRA FEATURES ───
+
+@bot.command()
+async def about(ctx):
+    await ctx.message.delete()
+    await ctx.send("🤖 Made with ❤️ by Prince Raj | Clean, Public Selfbot")
+
+@bot.command()
+async def userinfo(ctx):
+    await ctx.message.delete()
+    user = ctx.author
+    embed = discord.Embed(title="👤 Your User Info", color=0x3498db)
+    embed.add_field(name="Username", value=str(user), inline=True)
+    embed.add_field(name="User ID", value=user.id, inline=True)
+    embed.set_thumbnail(url=user.avatar.url if user.avatar else user.default_avatar.url)
+    await ctx.send(embed=embed)
+
+@bot.command()
+async def avatar(ctx):
+    await ctx.message.delete()
+    user = ctx.author
+    avatar_url = user.avatar.url if user.avatar else user.default_avatar.url
+    embed = discord.Embed(title=f"🖼️ Avatar for {user.display_name}", color=0x95a5a6)
+    embed.set_image(url=avatar_url)
+    await ctx.send(embed=embed)
+
+# ─── RUN ───
+bot.run(TOKEN, bot=False)  # Selfbot mode
